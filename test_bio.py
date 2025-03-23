@@ -25,6 +25,6 @@ for file, sequences in sequence_iterators.items():
 
     for record in sequences:
         print(f"ID: {record.id}")
-        print(f"Sequence: {record.seq}")
         print(f"Description: {record.description}")
+        print(f"Sequence: {record.seq[:70]}"+"..." if len(record.seq) > 70 else f"Sequence: {record.seq}")
         print("---")

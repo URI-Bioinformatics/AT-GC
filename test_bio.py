@@ -13,13 +13,17 @@ def read_fna(file_path):
 
 # Example usage
 sequence_iterators = {}
-data_folder_path = "test_data"
-for file in os.listdir(data_folder_path):
-    if file != ".gitkeep":
-        file_path = os.path.join(data_folder_path, file)
-        if os.path.isfile(file_path):
-            sequence_iterators[file] = (read_fna(file_path))
-
+data_folder_path = "../data"
+for directory in os.listdir(data_folder_path):
+    if directory != ".gitkeep" and directory != "dataset_catalog.json" and directory != "data_summary.tsv"  and directory != "assembly_data_report.jsonl" :
+        data_directory_path = os.path.join(data_folder_path, directory)
+        data_file = os.listdir(data_directory_path)
+        data_file_path = os.path.join(data_directory_path, data_file[0])
+        if os.path.isfile(data_file_path):
+            # print(data_file_path)
+            sequence_iterators[data_file[0]] = (read_fna(data_file_path))
+print(f"Collected data..\n{len(sequence_iterators)}")
+print()
 for file, sequences in sequence_iterators.items():
     print(f"Info from {file}")
 

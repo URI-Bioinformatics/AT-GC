@@ -44,7 +44,8 @@ def genome_tuples():
     print(f"Collected data..")
     # Hardcoded data source
     # This data folder holds genomic data sorted in phylum folders
-    phylum_data_folder_path = "/scratch/class/ayman_sandouk_uri_edu-bps542/Project/phylum_data"
+    #phylum_data_folder_path = "/scratch/class/ayman_sandouk_uri_edu-bps542/Project/phylum_data"
+    phylum_data_folder_path = "Data"
 
 
 

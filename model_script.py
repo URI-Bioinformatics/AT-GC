@@ -7,6 +7,7 @@ from sequences import genome_tuples
 import torch
 from torch.utils.data import Dataset
 from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.metrics import accuracy_score
 from transformers import (
     BertTokenizerFast,
     BertForSequenceClassification,
@@ -16,7 +17,8 @@ from transformers import (
 )
 
 # Constants for testing and configuration.
-KMER_SIZES = [8, 9, 10, 11]
+#   Used to easily set different run metrics like Window Stride, and which K-Mer numbers to use.
+KMER_SIZES = [8, 9, 10]
 MAX_LEN = 512
 STRIDE = 256
 EPOCHS = 10
@@ -51,6 +53,7 @@ class KmerWindowDataset(Dataset):
 
 
 # BERT is a pre-trained transformer available to download off of HuggingFace, which is what we are doing in this block of code.
+# We are using the base version of BERT, which is trained on the English language.
 def load_base_bert(num_labels: int):
     tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
     model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=num_labels)
@@ -58,6 +61,7 @@ def load_base_bert(num_labels: int):
 
 
 # This is the secret sauce of the transformer's transfer learning. We are cutting off the last 10% of the weights to retrain the model.
+#   We do this while maintaining the pre-trained weights of BERT in order to drastically reduce required compute resources and training times.
 def truncate_transformer_weights(model, ratio: float = 0.1):
     encoder = model.bert.encoder
     total_layers = len(encoder.layer)
@@ -67,7 +71,8 @@ def truncate_transformer_weights(model, ratio: float = 0.1):
     return model
 
 
-# This function handles plotting of the model accuracies
+# This function handles plotting of the model validation accuracies during training for each k-mer configuration.
+# Utilizes the trainer object from Hugging Face to access its history.
 def plot_accuracy_curve(trainer, k: int):
     log_history = trainer.state.log_history
     val_acc = [entry["eval_accuracy"] for entry in log_history if "eval_accuracy" in entry]
@@ -92,11 +97,15 @@ def train_model(sequences: List[str], labels: List[str], k: int, label_to_id: di
     print(f"\n--- Training with {k}-mers ---")
     os.makedirs(f"./results_k{k}", exist_ok=True)
 
+    # This is where we are splitting the dataset into stratified sections.
+    #   This methodology allows for the training, validation, and test splits to have a representative set of the data, given an overall
+    #   non-uniform Distribution.
     strat_split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
     for train_idx, val_idx in strat_split.split(sequences, labels):
         train_raw = [(sequences[i], labels[i]) for i in train_idx]
         val_raw = [(sequences[i], labels[i]) for i in val_idx]
 
+    # This chunking of the data allows for easier processing of the millions of base pairs per genome sequence
     def chunk_and_label(data):
         all_chunks, all_labels = [], []
         for seq, label in data:
@@ -104,7 +113,18 @@ def train_model(sequences: List[str], labels: List[str], k: int, label_to_id: di
             all_chunks.extend(chunks)
             all_labels.extend([label_to_id[label]] * len(chunks))
         return all_chunks, all_labels
+    
+    # adding in ability for Training to compute eval accuracy, instead of just eval loss
+    #   This is important because Loss is not a very interpretable representation of the model performance. Accuracy can be taken at face value by comparison.
+    def compute_metrics(eval_pred):
+        logits, labels = eval_pred
+        preds = logits.argmax(axis=-1)
+        acc = accuracy_score(labels, preds)
+        return {
+            "eval_accuracy": acc
+        }
 
+    # assigning the split data and the data tokenizer for the transformer's input
     train_chunks, train_chunk_labels = chunk_and_label(train_raw)
     val_chunks, val_chunk_labels = chunk_and_label(val_raw)
 
@@ -117,7 +137,7 @@ def train_model(sequences: List[str], labels: List[str], k: int, label_to_id: di
     # Setting various training arguments here.
     training_args = TrainingArguments(
         output_dir=f"./results_k{k}",
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_strategy="epoch",
         logging_dir=f"./logs_k{k}",
         logging_strategy="epoch",
@@ -126,7 +146,8 @@ def train_model(sequences: List[str], labels: List[str], k: int, label_to_id: di
         num_train_epochs=EPOCHS,
         weight_decay=0.01,
         load_best_model_at_end=True,
-        metric_for_best_model="eval_accuracy"
+        metric_for_best_model="eval_accuracy",
+        greater_is_better=True
     )
 
     # Trainer is an absolutely wonderful utility from HuggingFace that allows for the typical training loop of ML to be handled
@@ -137,12 +158,14 @@ def train_model(sequences: List[str], labels: List[str], k: int, label_to_id: di
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
+        compute_metrics=compute_metrics,
         callbacks=[EarlyStoppingCallback(early_stopping_patience=3)]
     )
 
     trainer.train()
     eval_results = trainer.evaluate()
 
+    # reporting highest accuracy and plotting validation accuracies across the epochs.
     acc = eval_results.get('eval_accuracy', 0.0)
     summary_path = "results_summary.txt"
     with open(summary_path, "a") as f:
@@ -169,9 +192,9 @@ def main(sequence_data_input: List[Tuple[str, str]]):
         train_model(sequences, phyla, k, label_to_id, max_chunks_per_genome=MAX_CHUNKS_PER_GENOME)
 
 
-# TODO -- Ayman, put the list of the tuples into this variable
+# Assigning the ingested genome sequences to a local variable for pipeline preprocessing.
 sequence_data = genome_tuples()
 
-# Main execution block of the function
+# Main entry point for the program. Calls the main execution block of the training script.
 if __name__ == "__main__":
     main(sequence_data)

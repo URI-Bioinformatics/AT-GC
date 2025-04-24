@@ -2,6 +2,7 @@ import os
 import random
 from typing import List, Tuple
 import matplotlib.pyplot as plt
+from sequences import genome_tuples
 
 import torch
 from torch.utils.data import Dataset
@@ -169,7 +170,7 @@ def main(sequence_data_input: List[Tuple[str, str]]):
 
 
 # TODO -- Ayman, put the list of the tuples into this variable
-sequence_data = []
+sequence_data = genome_tuples()
 
 # Main execution block of the function
 if __name__ == "__main__":

@@ -1,3 +1,12 @@
+# UV env
+.python-version
+uv.lock
+pyproject.toml
+# Training and testing results
+results*
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

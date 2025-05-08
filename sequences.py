@@ -38,21 +38,18 @@ k-mers of those sequeces as values.
 This dictionary will be split and used to train a transformers ML model and then test it 
 on its ability to predict the genis of a genome sucessfully
 """
-def genome_tuples():
+def genome_tuples(data_path: str):
     global files, seq_count, max_length
 
-    print(f"Collected data..")
+    print(f"Collecting data..")
     # Hardcoded data source
     # This data folder holds genomic data sorted in phylum folders
-    #phylum_data_folder_path = "/scratch/class/ayman_sandouk_uri_edu-bps542/Project/phylum_data"
-    phylum_data_folder_path = "Data"
-
-
+    # data_path = "Data"
 
     # Create an empty phylum list 
     phylum_seq = []
     
-    num_of_phylums = len(os.listdir(phylum_data_folder_path))
+    num_of_phylums = len(os.listdir(data_path))
     # Start iterating over the folders
     for phylum in os.listdir(phylum_data_folder_path):
 

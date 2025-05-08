@@ -192,9 +192,11 @@ def main(sequence_data_input: List[Tuple[str, str]]):
         train_model(sequences, phyla, k, label_to_id, max_chunks_per_genome=MAX_CHUNKS_PER_GENOME)
 
 
-# Assigning the ingested genome sequences to a local variable for pipeline preprocessing.
-sequence_data = genome_tuples()
-
 # Main entry point for the program. Calls the main execution block of the training script.
 if __name__ == "__main__":
+    # Accepting the path to the data fodler as an argument
+    data_path = sys.argv[1]
+    # Assigning the ingested genome sequences to a local variable for pipeline preprocessing.
+    sequence_data = genome_tuples(data_path)
+
     main(sequence_data)
